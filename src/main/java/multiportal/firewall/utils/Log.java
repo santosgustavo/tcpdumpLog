@@ -2,11 +2,11 @@ package multiportal.firewall.utils;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-
 
 public class Log {
 
@@ -19,11 +19,13 @@ public class Log {
 	private File diretoriosDosArquivos = new File(diretorioLogSujo);
 	private BufferedReader read;
 	private String[] ipOrigem = new String[2];
-        private RelacaoDeMac relacao = new RelacaoDeMac();
-        private String mac;
+	private RelacaoDeMac relacao = new RelacaoDeMac();;
+	private String mac;
+	FileWriter arquivo;
+	PrintWriter gravaNoArquivo;
 
-	public Log() {
-
+	public Log() throws FileNotFoundException {
+		
 	}
 
 	public void processar() throws IOException {
@@ -31,7 +33,12 @@ public class Log {
 		// OBTEM LISTA DE ARQUIVOS DENTRO DO DIRETORIO ONDE CONTEM OS LOGS GERADOS PELO
 		// TCPDUMP
 		listaDeArquivos = diretoriosDosArquivos.listFiles();
-		
+
+		// VERFICA SE EXISTEM ARQUIVOS Á SEREM PROCESSADOS
+		if(listaDeArquivos.length == 0) {
+			System.out.println("Diretório de logs '" + diretoriosDosArquivos + "' vazio!" );
+		}else {
+				
 		/*
 		 * PERCORRE A LISTA DE ARQUIVOS OBTIDA, E CHAMA A FUNÇÃO LimparLog,
 		 * arquivoOrigem: CAMINHO DO ARQUIVO DE LOG GERADO PELO TCPDUMP arquivoDestino:
@@ -41,15 +48,14 @@ public class Log {
 		for (int i = 0; i < listaDeArquivos.length; i++) {
 			nomeArquivoDiretorio = listaDeArquivos[i].getName();
 			ipOrigem = nomeArquivoDiretorio.split("-");
-			
 
 			arquivoOrigem = "C:\\Users\\mportal\\Desktop\\logs\\" + nomeArquivoDiretorio; /* Windows */
 			//arquivoOrigem = "/root/logs/" + nomeArquivoDiretorio; /* Linux */
 
 			arquivoDestino = "C:\\Users\\mportal\\Desktop\\files\\" + ipOrigem[0]; /* Windows */
-			//arquivoDestino = "/root/multiportal.firewall.log/logs/" + ipOrigem[0]; /* Linux */
+			//arquivoDestino = "/root/multiportal.firewall.log/logs/" + ipOrigem[0]; 	// Linux */
 
-                        mac = relacao.getMAC(ipOrigem[0]);
+			mac = relacao.getMAC(ipOrigem[0]);
 			try {
 				LimparLog(arquivoOrigem, arquivoDestino, ipOrigem[0], mac);
 				listaDeArquivos[i].delete();
@@ -59,18 +65,19 @@ public class Log {
 			}
 
 		}
+		}
 	}
 
 	public void LimparLog(String arquivoOrigem, String arquivoDestino, String origem, String mac) throws IOException {
-		FileWriter arquivo = new FileWriter(arquivoDestino, true);
-		PrintWriter gravaNoArquivo = new PrintWriter(arquivo);
+		arquivo = new FileWriter(arquivoDestino, true);
+		gravaNoArquivo = new PrintWriter(arquivo);
 		FileReader file = new FileReader(arquivoOrigem);
 		BufferedReader read = new BufferedReader(file);
 		String linha = read.readLine();
 		String auxiliar[] = new String[2];
 		String horario;
 		String destino[] = new String[3];
-		String tamanhoPacote[] = new String[2]; 
+		String tamanhoPacote[] = new String[2];
 		String parametros[] = new String[getTotalPacotes(arquivoOrigem)];
 		int count = 0;
 
@@ -83,15 +90,13 @@ public class Log {
 					destino = auxiliar[1].split(":");
 
 					if (destino[1].contains("A?")) {
-
 						destino[0] = getDestino(destino[1]);
-						System.out.println(destino[1]);
 						tamanhoPacote[1] = destino[1].substring(destino[1].length() - 3, destino[1].length() - 1);
-						
+
 					} else {
 						if (linha.contains("length")) {
 							if (destino[0].equals(" http")) {
-								//Pula
+								// Pula
 							} else {
 								destino[0] = getDestino(destino[0]);
 								tamanhoPacote = linha.split("length");
@@ -109,15 +114,14 @@ public class Log {
 					}
 
 					horario = linha.substring(0, 8);
-					
-					System.out.println(linha);
 					// PARAMETRO PARA GERAR RESUMO - Vetor com os parametros
-					parametros[count++] = (horario + "  -->  " + origem + "  -->  " + destino[0] + "  --> "	+ tamanhoPacote[1]);
+					parametros[count++] = (horario + "  -->  " + origem + "  -->  " + destino[0] + "  --> "
+							+ tamanhoPacote[1]);
 					// GRAVANDO NO ARQUIVO
 					if (tamanhoPacote[1].equals(" 0")) {
 						// PULA
 					} else {
-						gravaNoArquivo.println(horario + " > " + origem + "("+ mac +") > " + destino[0] + " > " + tamanhoPacote[1]);
+						gravaNoArquivo.println(horario + " > " + origem + "(" + mac + ") > " + destino[0] + " > " + tamanhoPacote[1]);
 					}
 
 				}
@@ -128,16 +132,6 @@ public class Log {
 		}
 		file.close();
 		arquivo.close();
-		gerarResumo(parametros);
-	}
-
-	public void gerarResumo(String[] listaDeParametros) {
-
-		for (int i = 0; i < listaDeParametros.length; i++) {
-
-			// System.out.println(listaDeParametros[i]);
-
-		}
 
 	}
 
@@ -157,40 +151,44 @@ public class Log {
 					}
 				}
 
-			}else {
-				if(destinoSujo.contains("https")) {
+			} else {
+				if (destinoSujo.contains("https")) {
 					quebraDoSplit = destinoSujo.split("\\.");
 					char elemento1 = quebraDoSplit[0].charAt(1);
 					char elemento2 = quebraDoSplit[1].charAt(0);
 					char elemento3 = quebraDoSplit[2].charAt(0);
-					
-					if(Character.isDigit(elemento1) && Character.isDigit(elemento2) && Character.isDigit(elemento3)) {
+
+					if (Character.isDigit(elemento1) && Character.isDigit(elemento2) && Character.isDigit(elemento3)) {
 						destinoLimpo = destinoSujo;
-					}else {
-						destinoLimpo = quebraDoSplit[quebraDoSplit.length -3 ]+ "." + quebraDoSplit[ + quebraDoSplit.length - 2] +"."+ quebraDoSplit[quebraDoSplit.length -1];
+					} else {
+						destinoLimpo = quebraDoSplit[quebraDoSplit.length - 3] + "."
+								+ quebraDoSplit[+quebraDoSplit.length - 2] + "."
+								+ quebraDoSplit[quebraDoSplit.length - 1];
 					}
-										
-				}else if (destinoSujo.contains("http")) {
+
+				} else if (destinoSujo.contains("http")) {
 					quebraDoSplit = destinoSujo.split("\\.");
-					if(quebraDoSplit.length  < 3) {
+					if (quebraDoSplit.length < 3) {
 						destinoLimpo = destinoSujo;
-					}else {
-											
-					char elemento1 = quebraDoSplit[0].charAt(1);
-					char elemento2 = quebraDoSplit[1].charAt(0);
-					char elemento3 = quebraDoSplit[2].charAt(0);
-					
-					if(Character.isDigit(elemento1) && Character.isDigit(elemento2) && Character.isDigit(elemento3)) {
-						destinoLimpo = destinoSujo;
-					}else {
-						destinoLimpo = quebraDoSplit[quebraDoSplit.length -3 ]+ "." + quebraDoSplit[ + quebraDoSplit.length -2] +"."+ quebraDoSplit[quebraDoSplit.length -1];
+					} else {
+
+						char elemento1 = quebraDoSplit[0].charAt(1);
+						char elemento2 = quebraDoSplit[1].charAt(0);
+						char elemento3 = quebraDoSplit[2].charAt(0);
+
+						if (Character.isDigit(elemento1) && Character.isDigit(elemento2)
+								&& Character.isDigit(elemento3)) {
+							destinoLimpo = destinoSujo;
+						} else {
+							destinoLimpo = quebraDoSplit[quebraDoSplit.length - 3] + "."
+									+ quebraDoSplit[+quebraDoSplit.length - 2] + "."
+									+ quebraDoSplit[quebraDoSplit.length - 1];
+						}
 					}
-					}					
-				}else {
+				} else {
 					destinoLimpo = destinoSujo;
 				}
-				
-				
+
 			}
 
 		}
@@ -198,7 +196,7 @@ public class Log {
 		return destinoLimpo;
 	}
 
-	//Método retorna quantidade de linhas(cada linha é um pecote) do arquivo.
+	// Método retorna quantidade de linhas(cada linha é um pecote) do arquivo.
 	public int getTotalPacotes(String origem) throws IOException {
 		FileReader file = new FileReader(origem);
 		read = new BufferedReader(file);
